@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Coursera - John Hopkins Data Science Specialisation</title>
+  <meta charset="utf-8">
+  <meta name="description" content="Coursera - John Hopkins Data Science Specialisation">
+  <meta name="author" content="Nicholas Wee">
+  <meta name="generator" content="slidify" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta http-equiv="X-UA-Compatible" content="chrome=1">
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/default.css" media="all" >
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/phone.css" 
+    media="only screen and (max-device-width: 480px)" >
+  <link rel="stylesheet" href="libraries/frameworks/io2012/css/slidify.css" >
+  <link rel="stylesheet" href="libraries/highlighters/highlight.js/css/tomorrow.css" />
+  <base target="_blank"> <!-- This amazingness opens all links in a new tab. -->  <link rel=stylesheet href="libraries/widgets/bootstrap/css/bootstrap.css"></link>
+<link rel=stylesheet href="./assets/css/ribbons.css"></link>
+
+  
+  <!-- Grab CDN jQuery, fall back to local if offline -->
+  <script src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.7.min.js"></script>
+  <script>window.jQuery || document.write('<script src="libraries/widgets/quiz/js/jquery.js"><\/script>')</script> 
+  <script data-main="libraries/frameworks/io2012/js/slides" 
+    src="libraries/frameworks/io2012/js/require-1.0.8.min.js">
+  </script>
+  
+  
+
+</head>
+<body style="opacity: 0">
+  <slides class="layout-widescreen">
+    
+    <!-- LOGO SLIDE -->
+        <slide class="title-slide segue nobackground">
+  <hgroup class="auto-fadein">
+    <h1>Coursera - John Hopkins Data Science Specialisation</h1>
+    <h2>Developing Data Products - Shiny Project Presentation</h2>
+    <p>Nicholas Wee<br/>Signature Course Participant</p>
+  </hgroup>
+  <article></article>  
+</slide>
+    
+
+    <!-- SLIDES -->
+    <slide class="" id="slide-1" style="background:;">
+  <hgroup>
+    <h2>Shiny Project:</h2>
+  </hgroup>
+  <article data-timings="">
+    <h2>Weather Impact on Population Health and Economy</h2>
+
+<h3>Background</h3>
+
+<p>Using US National Weather Services data from 1950 to 2011, an exploratory analysis tells us that Tonardo alone, has resulted in over 83,058 injuries and fatalities, and over US$40,972,120,087 of losses in Property and Crop Damages.  </p>
+
+<p>This ShinyApp allows us to interactively explore this data further, after some level of cleaning, and removing earlier data from 1950 to 2000 as it contains a lot of missing data.</p>
+
+<p>The ShinyApp provides a slider input that allows the user to define the data to extract from a given start and end years, and to select the top impactful events to Population Health and the Economy  </p>
+
+<p>The ShinyApp can be found here: <a href="https://wnichola.shinyapps.io/WeatherImpact">https://wnichola.shinyapps.io/WeatherImpact</a></p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h3>ShinyUI</h3>
+  </hgroup>
+  <article data-timings="">
+    <p>A tab based menu with a sidebar and mainpanel is used to layout the application.  The main tab presents the application, and a &quot;help&quot; tab provides usage information.</p>
+
+<p>On the sidebar, the sliderinput that limits the range between 2001 and 2011, and numeric input that is limited between 1 to 10 top events,  are defined by the following codes:</p>
+
+<pre><code class="r">            sliderInput(&quot;timeRange&quot;, &quot;Date Range (Years):&quot;,
+                min = 2001, max = 2011, sep = &quot;&quot;, value = c(2006, 2011)
+            ),
+            numericInput(
+                &#39;top_n&#39;, &#39;Select the top&#39;, 5, min = 1, max = 10, step = 1
+            )
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h3>ShinyServer</h3>
+  </hgroup>
+  <article data-timings="">
+    <p>On the server, the cleaned data is loaded, manipulated, and computed.  The following shows  the manipulation of Population Health data using the function input.</p>
+
+<pre><code class="r">load(file=&quot;./data/storm_data_clean.RData&quot;)
+storm_range &lt;- filter(storm_data_clean, BGN_DATE_YR &gt;= input$timeRange[1],
+                      BGN_DATE_YR &lt;= input$timeRange[2])
+storm_summary0 &lt;- storm_range %&gt;% group_by(EVTYPE) %&gt;% 
+        summarise(Total_Fatalities = sum(FATALITIES), Total_Injuries = sum(INJURIES),
+                  Total_Hlth_Impact = sum(FATALITIES + INJURIES),
+                  Total_PropDmg = sum(PROPDMG), Total_CropDmg = sum(CROPDMG),
+                  Total_Econ_Impact = sum(PROPDMG + CROPDMG))
+storm_sum_health &lt;- arrange(storm_summary0, desc(Total_Hlth_Impact))
+storm_sum_health &lt;- storm_sum_health[1:top_n, ] 
+</code></pre>
+
+<p>Then the data is sent to the UI, using the function&#39;s output.</p>
+
+<pre><code class="r">output$healthTable &lt;- renderDataTable({displayTopHealth(storm_sum_health, input$top_n)})
+output$health_plot &lt;- renderPlot({print(plot_health(storm_sum_health)})
+</code></pre>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h3>Datatable &amp; Plots</h3>
+  </hgroup>
+  <article data-timings="">
+    <p>The table is created using a datatable, and the chart by ggplot:</p>
+
+<pre><code class="r">healthSum &lt;- select(dt, EVTYPE, Total_Injuries, Total_Fatalities, Total_Hlth_Impact)
+result &lt;- datatable(healthSum, options = list(iDisplayLength = top_n))
+</code></pre>
+
+<p>The stacked bar chart is then assigned to the UI, and displayed using plotOutput(&#39;health_plot&#39;):</p>
+
+<p><img src="assets/fig/unnamed-chunk-6-1.png" alt="plot of chunk unnamed-chunk-6"> </p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+<slide class="class" id="id" style="background:;">
+  <hgroup>
+    <h3>Reactivity</h3>
+  </hgroup>
+  <article data-timings="">
+    <p>The previous slides simply used the inputs from the UI.  However, these inputs are reactive.  That is, these react to the action of the users, and needs to be handled differently from normal variables as follows:</p>
+
+<pre><code class="r">storm_range &lt;- reactive({
+    filter(storm_data_clean, BGN_DATE_YR &gt;= input$timeRange[1], BGN_DATE_YR &lt;= input$timeRange[2])
+})
+</code></pre>
+
+<p>The reactive function wraps a normal expression to create a reactive expression. Conceptually, a reactive expression is a expression whose result will change over time depending on user actions.  </p>
+
+<p>In addition, all data return from a reactive expression needs to be accessed differently from normal. For example, storm_range in the sample above should be access as follows:</p>
+
+<pre><code class="r">dt &lt;- group_by_evtype(storm_range())
+</code></pre>
+
+<p>Note the brackets behind the variable.</p>
+
+  </article>
+  <!-- Presenter Notes -->
+</slide>
+
+    <slide class="backdrop"></slide>
+  </slides>
+  <div class="pagination pagination-small" id='io2012-ptoc' style="display:none;">
+    <ul>
+      <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=1 title='Shiny Project:'>
+         1
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=2 title='ShinyUI'>
+         2
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=3 title='ShinyServer'>
+         3
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=4 title='Datatable &amp; Plots'>
+         4
+      </a>
+    </li>
+    <li>
+      <a href="#" target="_self" rel='tooltip' 
+        data-slide=5 title='Reactivity'>
+         5
+      </a>
+    </li>
+  </ul>
+  </div>  <!--[if IE]>
+    <script 
+      src="http://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js">  
+    </script>
+    <script>CFInstall.check({mode: 'overlay'});</script>
+  <![endif]-->
+</body>
+  <!-- Load Javascripts for Widgets -->
+  <script src="libraries/widgets/bootstrap/js/bootstrap.min.js"></script>
+<script src="libraries/widgets/bootstrap/js/bootbox.min.js"></script>
+
+  <script>  
+  $(function (){ 
+    $("#example").popover(); 
+    $("[rel='tooltip']").tooltip(); 
+  });  
+  </script>  
+  <!-- LOAD HIGHLIGHTER JS FILES -->
+  <script src="libraries/highlighters/highlight.js/highlight.pack.js"></script>
+  <script>hljs.initHighlightingOnLoad();</script>
+  <!-- DONE LOADING HIGHLIGHTER JS FILES -->
+   
+  </html>
